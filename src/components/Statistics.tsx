@@ -7,6 +7,8 @@ import { today } from "../util/dates";
 import { FormattedMessage } from "react-intl";
 import { LocaleContext } from "../i18n/LocaleContext";
 import localeList from "../i18n/messages";
+import { db } from "./Firebase"; // Import Firestore from Firebase
+import { collection, getDocs } from "firebase/firestore"; // Import Firestore functions
 
 type Props = {
   setShowStats: React.Dispatch<React.SetStateAction<boolean>>;
@@ -27,7 +29,7 @@ export default function Statistics({ setShowStats, userName }: Props) {
   };
 
   const [storedStats] = useLocalStorage<Stats>("statistics", firstStats);
-  const { gamesWon, lastWin, currentStreak, maxStreak, usedGuesses} = storedStats;
+  const { gamesWon, lastWin, currentStreak, maxStreak, usedGuesses } = storedStats;
 
   const sumGuesses = usedGuesses.reduce((a, b) => a + b, 0);
   const avgGuesses = Math.round((sumGuesses / usedGuesses.length) * 100) / 100;
@@ -61,6 +63,29 @@ export default function Statistics({ setShowStats, userName }: Props) {
     };
   }, [setShowStats]);
 
+  // Leaderboard Modal State
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState<{ name: string, score: string }[]>([]);
+
+  const fetchLeaderboard = async () => {
+    const leaderboard: { name: string, score: string }[] = [];
+    try {
+      const scoresCollection = collection(db, "scores");
+      const querySnapshot = await getDocs(scoresCollection);
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        for (const [email, scoreData] of Object.entries(data)) {
+          leaderboard.push({ name: (scoreData as any).firstName, score: (scoreData as any).score });
+        }
+      });
+      setLeaderboardData(leaderboard);
+      setShowLeaderboard(true); // Show leaderboard modal
+    } catch (error) {
+      console.error("Error fetching leaderboard: ", error);
+    }
+  };
+
   return (
     <div ref={modalRef} className="max-w-sm">
       <button className="absolute top-3 right-4" onClick={() => setShowStats(false)}>
@@ -86,7 +111,35 @@ export default function Statistics({ setShowStats, userName }: Props) {
           ))}
         </tbody>
       </table>
-      {/* Reset and Share buttons remain unchanged */}
+
+      {/* Add the Leaderboard button */}
+      <div className="flex justify-around mt-6">
+        <button onClick={fetchLeaderboard} className="bg-blue-500 text-white rounded-md px-4 py-2">
+          Leaderboard
+        </button>
+      </div>
+
+      {/* Leaderboard Modal */}
+      {showLeaderboard && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md mx-auto">
+            <h2 className="text-xl font-bold mb-4">Leaderboard</h2>
+            <ul>
+              {leaderboardData.map((entry, index) => (
+                <li key={index} className="my-2">
+                  {entry.name}: {entry.score}
+                </li>
+              ))}
+            </ul>
+            <button
+              className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
+              onClick={() => setShowLeaderboard(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
