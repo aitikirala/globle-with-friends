@@ -16,33 +16,29 @@ import { doc, getDoc, setDoc } from "firebase/firestore"; // Firestore functions
 import { today } from './util/dates'; // Import today's date function
 
 function App() {
-  // State
   const [reSpin, setReSpin] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [params] = useSearchParams();
   const practiceMode = Boolean(params.get("practice_mode"));
 
-  // Modal state
   const [open, setOpen] = useState(true); 
-  const [showSignUpForm, setShowSignUpForm] = useState(false); // For sign-up form
-  const [firstName, setFirstName] = useState(""); // First name input state
-  const [email, setEmail] = useState(""); // Email input state
-  const [errorMessage, setErrorMessage] = useState(""); // Error message state
+  const [showSignUpForm, setShowSignUpForm] = useState(false); 
+  const [firstName, setFirstName] = useState(""); 
+  const [email, setEmail] = useState(""); 
+  const [errorMessage, setErrorMessage] = useState(""); 
 
-  // Context
+  const [userName, setUserName] = useState(""); // Store user's name
+
   const themeContext = useContext(ThemeContext);
 
-  // Re-render globe
   useEffect(() => {
     if (reSpin) setTimeout(() => setReSpin(false), 1);
   }, [reSpin]);
 
   const handleClose = () => setOpen(false);
 
-  // Normalize email to lowercase
   const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-  // Handle Sign In button
   const handleSignIn = async () => {
     if (!email) {
       setErrorMessage("Please enter an email.");
@@ -50,27 +46,25 @@ function App() {
     }
 
     try {
-      const normalizedEmail = normalizeEmail(email); // Normalize email to lowercase
+      const normalizedEmail = normalizeEmail(email);
 
-      // Check if the email exists in Firestore
-      const userDocRef = doc(db, "users", normalizedEmail); // Use normalized email
+      const userDocRef = doc(db, "users", normalizedEmail); 
       const userDocSnap = await getDoc(userDocRef);
 
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
-        const firstName = userData.firstName || "Anonymous"; // Retrieve user's first name
+        const firstName = userData.firstName || "Anonymous";
+        setUserName(firstName); // Store the user's name in state
 
-        // Store user's first name and a default score of "--" in the "scores" collection
-        const scoresDocRef = doc(db, "scores", today); // Use today's date as document ID
+        const scoresDocRef = doc(db, "scores", today); 
         await setDoc(scoresDocRef, {
           [normalizedEmail]: {
             firstName: firstName,
-            score: "--" // Default score
+            score: "--" 
           }
-        }, { merge: true }); // Merge to avoid overwriting other users' scores
+        }, { merge: true });
 
-        console.log("User signed in and score stored:", firstName);
-        setOpen(false); // Close the modal and allow the user to continue
+        setOpen(false);
       } else {
         setErrorMessage("No user found with this email. Please try again.");
       }
@@ -80,27 +74,21 @@ function App() {
     }
   };
 
-  // Handle Sign Up button - shows form
   const handleSignUp = () => {
-    setShowSignUpForm(true); // Show sign-up form instead of sign-in buttons
-    setErrorMessage(""); // Clear any error messages when switching to sign-up
+    setShowSignUpForm(true); 
+    setErrorMessage(""); 
   };
 
-  // Handle Sign Up form submission
   const handleSubmit = async () => {
     if (firstName && email) {
       try {
-        const normalizedEmail = normalizeEmail(email); // Normalize email to lowercase
+        const normalizedEmail = normalizeEmail(email);
 
-        // Save to Firebase Firestore
         await setDoc(doc(db, "users", normalizedEmail), {
           firstName: firstName,
-          email: normalizedEmail // Store the normalized email
+          email: normalizedEmail 
         });
 
-        console.log("Data submitted to Firebase");
-
-        // Clear form and close modal
         setFirstName("");
         setEmail("");
         setOpen(false);
@@ -129,17 +117,17 @@ function App() {
       absolute z-10 w-full sm:w-fit inset-x-0 mx-auto py-6 px-6 rounded-md 
       space-y-2"
       >
-        <Statistics setShowStats={setShowStats} />
+        {/* Pass userName as prop to Statistics */}
+        <Statistics setShowStats={setShowStats} userName={userName} />
       </Fade>
+
       <Routes>
         <Route path="/" element={<Help />} />
-        <Route
-          path="/game"
-          element={<Game reSpin={reSpin} setShowStats={setShowStats} />}
-        />
+        <Route path="/game" element={<Game reSpin={reSpin} setShowStats={setShowStats} />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/info" element={<Info />} />
       </Routes>
+
       {!practiceMode && (
         <div className="sm:py-4">
           <MobileOnlyView>
@@ -155,77 +143,73 @@ function App() {
       )}
 
       {/* Modal for sign-in and sign-up */}
-      <Modal
-        open={open} // Control the visibility of the modal
-        onClose={handleClose}
-        aria-labelledby="popup-modal"
-        aria-describedby="popup-modal-description"
-      >
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 400,
-            bgcolor: 'background.paper',
-            boxShadow: 24,
-            p: 4,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center'
-          }}
-        >
-          {!showSignUpForm ? (
-            <>
-              <h2 id="popup-modal">Sign In</h2>
-              <TextField
-                label="Email"
-                variant="outlined"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                fullWidth
-                style={{ marginBottom: '10px' }}
-              />
-              {errorMessage && (
-                <p style={{ color: "red" }}>{errorMessage}</p>
-              )}
-              <Button variant="contained" color="primary" onClick={handleSignIn}>
-                Sign In
-              </Button>
-              <Button variant="contained" color="secondary" onClick={handleSignUp} style={{ marginTop: '10px' }}>
-                Sign Up
-              </Button>
-            </>
-          ) : (
-            <>
-              <h2 id="popup-modal">Sign Up</h2>
-              <TextField
-                label="First Name"
-                variant="outlined"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                fullWidth
-                style={{ marginBottom: '10px' }}
-              />
-              <TextField
-                label="Email"
-                variant="outlined"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                fullWidth
-                style={{ marginBottom: '10px' }}
-              />
-              {errorMessage && (
-                <p style={{ color: "red" }}>{errorMessage}</p>
-              )}
-              <Button variant="contained" color="primary" onClick={handleSubmit}>
-                Sign Up
-              </Button>
-            </>
-          )}
-        </Box>
-      </Modal>
+      <Modal open={open} onClose={handleClose}>
+  <Box
+    sx={{
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: 400,
+      bgcolor: 'background.paper',
+      boxShadow: 24,
+      p: 4,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+    }}
+  >
+    {!showSignUpForm ? (
+      <>
+        <h2 id="popup-modal">Sign In</h2>
+        <TextField
+          label="Email"
+          variant="outlined"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          fullWidth
+          style={{ marginBottom: '10px' }}
+        />
+        {errorMessage && (
+          <p style={{ color: "red" }}>{errorMessage}</p>
+        )}
+        <Button variant="contained" color="primary" onClick={handleSignIn}>
+          Sign In
+        </Button>
+        <Button variant="contained" color="secondary" onClick={handleSignUp} style={{ marginTop: '10px' }}>
+          Sign Up
+        </Button>
+      </>
+    ) : (
+      <>
+        <h2 id="popup-modal">Sign Up</h2>
+        <TextField
+          label="First Name"
+          variant="outlined"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          fullWidth
+          style={{ marginBottom: '10px' }}
+        />
+        <TextField
+          label="Email"
+          variant="outlined"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          fullWidth
+          style={{ marginBottom: '10px' }}
+        />
+        {errorMessage && (
+          <p style={{ color: "red" }}>{errorMessage}</p>
+        )}
+        <Button variant="contained" color="primary" onClick={handleSubmit}>
+          Sign Up
+        </Button>
+      </>
+    )}
+  </Box>
+</Modal>
+
     </div>
   );
 }
