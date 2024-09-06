@@ -10,6 +10,9 @@ import { ThemeContext } from "./context/ThemeContext";
 import Fade from "./transitions/Fade";
 import { MobileOnlyView, TabletView, BrowserView } from "react-device-detect";
 import SnackAdUnit from "./components/SnackAdUnit";
+import { Modal, Box, Button, TextField } from '@mui/material'; // For modal and form
+import { db } from './components/Firebase'; // Import Firestore from Firebase.tsx
+import { doc, setDoc } from "firebase/firestore"; // Firestore functions
 
 function App() {
   // State
@@ -18,6 +21,12 @@ function App() {
   const [params] = useSearchParams();
   const practiceMode = Boolean(params.get("practice_mode"));
 
+  // Modal state
+  const [open, setOpen] = useState(true); 
+  const [showSignUpForm, setShowSignUpForm] = useState(false); // For sign-up form
+  const [firstName, setFirstName] = useState(""); // First name input state
+  const [email, setEmail] = useState(""); // Email input state
+
   // Context
   const themeContext = useContext(ThemeContext);
 
@@ -25,6 +34,44 @@ function App() {
   useEffect(() => {
     if (reSpin) setTimeout(() => setReSpin(false), 1);
   }, [reSpin]);
+
+  const handleClose = () => setOpen(false);
+
+  // Handle Sign In button (without form)
+  const handleSignIn = () => {
+    setOpen(false);
+    console.log("Handle Firebase sign-in logic here.");
+  };
+
+  // Handle Sign Up button - shows form
+  const handleSignUp = () => {
+    setShowSignUpForm(true); // Show sign-up form instead of sign-in buttons
+  };
+
+  // Handle Sign Up form submission
+  const handleSubmit = async () => {
+    if (firstName && email) {
+      try {
+        // Save to Firebase Firestore
+        await setDoc(doc(db, "users", email), {
+          firstName: firstName,
+          email: email
+        });
+
+        console.log("Data submitted to Firebase");
+
+        // Clear form and close modal
+        setFirstName("");
+        setEmail("");
+        setOpen(false);
+
+      } catch (error) {
+        console.error("Error adding document: ", error);
+      }
+    } else {
+      console.log("Please fill in both fields.");
+    }
+  };
 
   const dark = themeContext.theme.nightMode ? "dark" : "";
 
@@ -66,6 +113,67 @@ function App() {
           </TabletView>
         </div>
       )}
+
+      {/* Modal for sign-in and sign-up */}
+      <Modal
+        open={open} // Control the visibility of the modal
+        onClose={handleClose}
+        aria-labelledby="popup-modal"
+        aria-describedby="popup-modal-description"
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 400,
+            bgcolor: 'background.paper',
+            boxShadow: 24,
+            p: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}
+        >
+          {/* Conditional rendering for sign-in buttons or sign-up form */}
+          {!showSignUpForm ? (
+            <>
+              <h2 id="popup-modal">Welcome</h2>
+              <p id="popup-modal-description">Please sign in or sign up to continue.</p>
+              <Button variant="contained" color="primary" onClick={handleSignIn}>
+                Sign In
+              </Button>
+              <Button variant="contained" color="secondary" onClick={handleSignUp} style={{ marginTop: '10px' }}>
+                Sign Up
+              </Button>
+            </>
+          ) : (
+            <>
+              <h2 id="popup-modal">Sign Up</h2>
+              <TextField
+                label="First Name"
+                variant="outlined"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                fullWidth
+                style={{ marginBottom: '10px' }}
+              />
+              <TextField
+                label="Email"
+                variant="outlined"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                fullWidth
+                style={{ marginBottom: '10px' }}
+              />
+              <Button variant="contained" color="primary" onClick={handleSubmit}>
+                Send
+              </Button>
+            </>
+          )}
+        </Box>
+      </Modal>
     </div>
   );
 }
