@@ -12,7 +12,7 @@ import { MobileOnlyView, TabletView, BrowserView } from "react-device-detect";
 import SnackAdUnit from "./components/SnackAdUnit";
 import { Modal, Box, Button, TextField } from '@mui/material'; // For modal and form
 import { db } from './components/Firebase'; // Import Firestore from Firebase.tsx
-import { doc, setDoc } from "firebase/firestore"; // Firestore functions
+import { doc, getDoc, setDoc } from "firebase/firestore"; // Firestore functions
 
 function App() {
   // State
@@ -26,6 +26,7 @@ function App() {
   const [showSignUpForm, setShowSignUpForm] = useState(false); // For sign-up form
   const [firstName, setFirstName] = useState(""); // First name input state
   const [email, setEmail] = useState(""); // Email input state
+  const [errorMessage, setErrorMessage] = useState(""); // Error message state
 
   // Context
   const themeContext = useContext(ThemeContext);
@@ -37,25 +38,51 @@ function App() {
 
   const handleClose = () => setOpen(false);
 
-  // Handle Sign In button (without form)
-  const handleSignIn = () => {
-    setOpen(false);
-    console.log("Handle Firebase sign-in logic here.");
+  // Normalize email to lowercase
+  const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+  // Handle Sign In button
+  const handleSignIn = async () => {
+    if (!email) {
+      setErrorMessage("Please enter an email.");
+      return;
+    }
+
+    try {
+      const normalizedEmail = normalizeEmail(email); // Normalize email to lowercase
+
+      // Check if the email exists in Firestore
+      const docRef = doc(db, "users", normalizedEmail); // Use normalized email
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        console.log("User found:", docSnap.data());
+        setOpen(false); // Close the modal and allow the user to continue
+      } else {
+        setErrorMessage("No user found with this email. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error checking email:", error);
+      setErrorMessage("An error occurred while checking the email. Please try again.");
+    }
   };
 
   // Handle Sign Up button - shows form
   const handleSignUp = () => {
     setShowSignUpForm(true); // Show sign-up form instead of sign-in buttons
+    setErrorMessage(""); // Clear any error messages when switching to sign-up
   };
 
   // Handle Sign Up form submission
   const handleSubmit = async () => {
     if (firstName && email) {
       try {
+        const normalizedEmail = normalizeEmail(email); // Normalize email to lowercase
+
         // Save to Firebase Firestore
-        await setDoc(doc(db, "users", email), {
+        await setDoc(doc(db, "users", normalizedEmail), {
           firstName: firstName,
-          email: email
+          email: normalizedEmail // Store the normalized email
         });
 
         console.log("Data submitted to Firebase");
@@ -69,7 +96,7 @@ function App() {
         console.error("Error adding document: ", error);
       }
     } else {
-      console.log("Please fill in both fields.");
+      setErrorMessage("Please fill in both fields.");
     }
   };
 
@@ -136,11 +163,20 @@ function App() {
             alignItems: 'center'
           }}
         >
-          {/* Conditional rendering for sign-in buttons or sign-up form */}
           {!showSignUpForm ? (
             <>
-              <h2 id="popup-modal">Welcome</h2>
-              <p id="popup-modal-description">Please sign in or sign up to continue.</p>
+              <h2 id="popup-modal">Sign In</h2>
+              <TextField
+                label="Email"
+                variant="outlined"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                fullWidth
+                style={{ marginBottom: '10px' }}
+              />
+              {errorMessage && (
+                <p style={{ color: "red" }}>{errorMessage}</p>
+              )}
               <Button variant="contained" color="primary" onClick={handleSignIn}>
                 Sign In
               </Button>
@@ -167,8 +203,11 @@ function App() {
                 fullWidth
                 style={{ marginBottom: '10px' }}
               />
+              {errorMessage && (
+                <p style={{ color: "red" }}>{errorMessage}</p>
+              )}
               <Button variant="contained" color="primary" onClick={handleSubmit}>
-                Send
+                Sign Up
               </Button>
             </>
           )}
