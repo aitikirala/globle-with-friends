@@ -1,11 +1,11 @@
 # example netlify.toml
 [build]
-command = "npm run build"
+# Prevent the build from failing due to warnings
+command = "CI=false npm run build" 
 ## functions = "netlify/functions"
 publish = "build"
 
-## Uncomment to use this redirect for Single Page Applications like create-react-app.
-## Not needed for static site generators.
+# Redirect configuration for single-page applications (React, Vue, etc.)
 [[redirects]]
 from = "/*"
 to = "/index.html"

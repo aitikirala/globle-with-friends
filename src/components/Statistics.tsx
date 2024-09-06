@@ -4,11 +4,9 @@ import { Stats } from "../lib/localStorage";
 import { isMobile } from "react-device-detect";
 import { getPath } from "../util/svg";
 import { today } from "../util/dates";
-import { isFirefox } from "react-device-detect";
 import { FormattedMessage } from "react-intl";
 import { LocaleContext } from "../i18n/LocaleContext";
 import localeList from "../i18n/messages";
-import Fade from "../transitions/Fade";
 
 type Props = {
   setShowStats: React.Dispatch<React.SetStateAction<boolean>>;
@@ -28,8 +26,8 @@ export default function Statistics({ setShowStats, userName }: Props) {
     emojiGuesses: "",
   };
 
-  const [storedStats, storeStats] = useLocalStorage<Stats>("statistics", firstStats);
-  const { gamesWon, lastWin, currentStreak, maxStreak, usedGuesses, emojiGuesses } = storedStats;
+  const [storedStats] = useLocalStorage<Stats>("statistics", firstStats);
+  const { gamesWon, lastWin, currentStreak, maxStreak, usedGuesses} = storedStats;
 
   const sumGuesses = usedGuesses.reduce((a, b) => a + b, 0);
   const avgGuesses = Math.round((sumGuesses / usedGuesses.length) * 100) / 100;
