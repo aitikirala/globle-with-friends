@@ -1,21 +1,20 @@
-// Import the functions you need from the SDKs you need
+// Import the functions you need from the Firebase SDKs
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth"; // Import Auth
+import { getAuth } from "firebase/auth";
 
-// Your web app's Firebase configuration
+// Firebase configuration using environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyCN59CkENSWb4Pat1CYKAlIaoiejzgAOUE",
-  authDomain: "globe-with-friends.firebaseapp.com",
-  projectId: "globe-with-friends",
-  storageBucket: "globe-with-friends.appspot.com",
-  messagingSenderId: "572003466525",
-  appId: "1:572003466525:web:784c5ca358bc9d51a3b5f4",
-  measurementId: "G-0TLVJN1WNF"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,               // Your Firebase API Key
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,       // Your Firebase Auth Domain
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,         // Your Firebase Project ID
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET, // Your Firebase Storage Bucket
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID, // Messaging Sender ID
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,                 // Firebase App ID
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID  // Measurement ID (optional)
 };
 
-// Initialize Firebase
+// Initialize Firebase with the configuration
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app); // Initialize and export Firestore
-export const auth = getAuth(app); // Initialize and export Auth
+export const db = getFirestore(app);  // Export Firestore database
+export const auth = getAuth(app);     // Export Firebase authentication
