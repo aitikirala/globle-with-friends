@@ -13,6 +13,7 @@ import SnackAdUnit from "./components/SnackAdUnit";
 import { Modal, Box, Button, TextField } from '@mui/material'; // For modal and form
 import { db } from './components/Firebase'; // Import Firestore from Firebase.tsx
 import { doc, getDoc, setDoc } from "firebase/firestore"; // Firestore functions
+import { today } from './util/dates'; // Import today's date function
 
 function App() {
   // State
@@ -52,11 +53,23 @@ function App() {
       const normalizedEmail = normalizeEmail(email); // Normalize email to lowercase
 
       // Check if the email exists in Firestore
-      const docRef = doc(db, "users", normalizedEmail); // Use normalized email
-      const docSnap = await getDoc(docRef);
+      const userDocRef = doc(db, "users", normalizedEmail); // Use normalized email
+      const userDocSnap = await getDoc(userDocRef);
 
-      if (docSnap.exists()) {
-        console.log("User found:", docSnap.data());
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const firstName = userData.firstName || "Anonymous"; // Retrieve user's first name
+
+        // Store user's first name and a default score of "--" in the "scores" collection
+        const scoresDocRef = doc(db, "scores", today); // Use today's date as document ID
+        await setDoc(scoresDocRef, {
+          [normalizedEmail]: {
+            firstName: firstName,
+            score: "--" // Default score
+          }
+        }, { merge: true }); // Merge to avoid overwriting other users' scores
+
+        console.log("User signed in and score stored:", firstName);
         setOpen(false); // Close the modal and allow the user to continue
       } else {
         setErrorMessage("No user found with this email. Please try again.");
