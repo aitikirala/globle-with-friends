@@ -84,11 +84,22 @@ function App() {
       try {
         const normalizedEmail = normalizeEmail(email);
 
+        // Add the user to the 'users' collection
         await setDoc(doc(db, "users", normalizedEmail), {
           firstName: firstName,
           email: normalizedEmail 
         });
 
+        // Add the user to the 'scores' collection with a default score
+        const scoresDocRef = doc(db, "scores", today); 
+        await setDoc(scoresDocRef, {
+          [normalizedEmail]: {
+            firstName: firstName,
+            score: "--" // Initial score set to "--"
+          }
+        }, { merge: true });
+
+        // Clear the input fields and close the modal
         setFirstName("");
         setEmail("");
         setOpen(false);
