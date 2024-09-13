@@ -8,14 +8,15 @@ import { FormattedMessage } from "react-intl";
 import { LocaleContext } from "../i18n/LocaleContext";
 import localeList from "../i18n/messages";
 import { db } from "./Firebase"; // Import Firestore from Firebase
-import { collection, getDocs } from "firebase/firestore"; // Import Firestore functions
+import { doc, getDoc, setDoc } from "firebase/firestore"; // Import Firestore functions
 
 type Props = {
   setShowStats: React.Dispatch<React.SetStateAction<boolean>>;
   userName?: string; // Allow userName to be passed in
+  email?: string; // Pass user email for score updates
 };
 
-export default function Statistics({ setShowStats, userName }: Props) {
+export default function Statistics({ setShowStats, userName, email }: Props) {
   const localeContext = useContext(LocaleContext);
   const { locale } = localeContext;
 
@@ -63,6 +64,58 @@ export default function Statistics({ setShowStats, userName }: Props) {
     };
   }, [setShowStats]);
 
+  
+  const updateScore = async (email: string, todaysGuesses: number) => {
+    if (!email || todaysGuesses === 0) {
+      console.log("No valid email or guesses to update.");
+      return; // Ensure email and guesses are valid
+    }
+  
+    try {
+      console.log("Updating score for:", email, "with guesses:", todaysGuesses); // Log the email and guesses
+  
+      // Create a reference to the Firestore document
+      const scoresDocRef = doc(db, "scores", today);
+  
+      // Set or update the score for the user
+      await setDoc(
+        scoresDocRef,
+        {
+          [email]: {
+            firstName: userName || "Unknown", // Include user's first name
+            score: todaysGuesses, // Store score as a number
+          },
+        },
+        { merge: true } // Merge with existing data
+      );
+  
+      console.log(`Score updated for ${email}: ${todaysGuesses}`);
+    } catch (error) {
+      console.error("Error updating score in Firestore:", error); // Log any errors
+    }
+  };
+  
+  useEffect(() => {
+    // Check if the user has guessed the mystery country correctly today
+    if (lastWin === today && email && todaysGuesses !== "--" && Number(todaysGuesses) !== 0) {
+      console.log("User guessed the country correctly. Updating Firestore with todaysGuesses:", todaysGuesses);
+      updateScore(email, Number(todaysGuesses)); // Call updateScore to update Firestore
+    } else {
+      console.log("Conditions not met for updating the score. Either no win or invalid guesses.");
+    }
+  }, [lastWin, email, todaysGuesses, userName]);
+  
+
+  useEffect(() => {
+    if (lastWin === today && email && todaysGuesses !== "--" && Number(todaysGuesses) !== 0) {
+      console.log("User guessed the country correctly. Updating Firestore with todaysGuesses:", todaysGuesses);
+      updateScore(email, Number(todaysGuesses)); // Call updateScore to update Firestore
+    } else {
+      console.log("Conditions not met for updating the score. Either no win or invalid guesses.");
+    }
+  }, [lastWin, email, todaysGuesses, userName]);
+  
+
   // Leaderboard Modal State
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState<{ name: string, score: string }[]>([]);
@@ -70,19 +123,23 @@ export default function Statistics({ setShowStats, userName }: Props) {
   const fetchLeaderboard = async () => {
     const leaderboard: { name: string, score: string }[] = [];
     try {
-      const scoresCollection = collection(db, "scores");
-      const querySnapshot = await getDocs(scoresCollection);
+      const scoresDocRef = doc(db, "scores", today); // Fetch today's document from Firestore
+      const docSnapshot = await getDoc(scoresDocRef); // Use getDoc to fetch a single document
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data();
         for (const [email, scoreData] of Object.entries(data)) {
+          console.log("Fetched score for", email, ":", scoreData); // Log the fetched data
           leaderboard.push({ name: (scoreData as any).firstName, score: (scoreData as any).score });
         }
-      });
+      } else {
+        console.log("No data found for today's scores.");
+      }
+
       setLeaderboardData(leaderboard);
       setShowLeaderboard(true); // Show leaderboard modal
     } catch (error) {
-      console.error("Error fetching leaderboard: ", error);
+      console.error("Error fetching leaderboard:", error);
     }
   };
 
