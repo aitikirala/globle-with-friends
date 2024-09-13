@@ -1,6 +1,12 @@
-# Notes about Globle
+# Globle with Friends
 
-**Version 1.6.0** - [Change log](CHANGELOG.md)
+**Adopted from [Globle by Abe Train](https://github.com/the-abe-train/globle).**
+
+## About This Project
+
+The reason I created this spin-off of Globle is to make a few changes to the visual layout and, more importantly, to add a feature that allows my friends and me to see each other’s scores. We often play the Mini Crossword by NYT Games and love seeing how we rank against one another, so we were disappointed that we couldn’t do the same on the original Globle game.
+
+To solve this, I decided to build on top of the original Globle and implement the feature where we can share and compare our scores with each other, making it a more social experience!
 
 ## Listed countries
 - The list of countries for this game is the same as that used by [Sporcle](https://www.sporcle.com/blog/2013/01/what-is-a-country/)
