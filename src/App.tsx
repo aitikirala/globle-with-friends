@@ -10,10 +10,10 @@ import { ThemeContext } from "./context/ThemeContext";
 import Fade from "./transitions/Fade";
 import { MobileOnlyView, TabletView, BrowserView } from "react-device-detect";
 import SnackAdUnit from "./components/SnackAdUnit";
-import { Modal, Box, Button, TextField } from '@mui/material'; // For modal and form
-import { db } from './components/Firebase'; // Import Firestore from Firebase.tsx
-import { doc, getDoc, setDoc } from "firebase/firestore"; // Firestore functions
-import { today } from './util/dates'; // Import today's date function
+import { Modal, Box, Button, TextField } from '@mui/material'; 
+import { db } from './components/Firebase';
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { today } from './util/dates';
 
 function App() {
   const [reSpin, setReSpin] = useState(false);
@@ -26,9 +26,7 @@ function App() {
   const [firstName, setFirstName] = useState(""); 
   const [email, setEmail] = useState(""); 
   const [errorMessage, setErrorMessage] = useState(""); 
-
-  const [userName, setUserName] = useState(""); // Store user's name
-
+  const [userName, setUserName] = useState(""); 
   const themeContext = useContext(ThemeContext);
 
   useEffect(() => {
@@ -36,43 +34,35 @@ function App() {
   }, [reSpin]);
 
   const handleClose = () => setOpen(false);
-
   const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-  const handleSignIn = async () => {
-    if (!email) {
-      setErrorMessage("Please enter an email.");
-      return;
+const handleSignIn = async () => {
+  if (!email) {
+    setErrorMessage("Please enter an email.");
+    return;
+  }
+
+  try {
+    const normalizedEmail = normalizeEmail(email); // Ensure lowercase
+
+    const userDocRef = doc(db, "users", normalizedEmail); 
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+      const userData = userDocSnap.data();
+      const firstName = userData.firstName || "Anonymous";
+      setUserName(firstName); 
+
+      setOpen(false);
+    } else {
+      setErrorMessage("No user found with this email. Please try again.");
     }
+  } catch (error) {
+    console.error("Error checking email:", error);
+    setErrorMessage("An error occurred while checking the email. Please try again.");
+  }
+};
 
-    try {
-      const normalizedEmail = normalizeEmail(email);
-
-      const userDocRef = doc(db, "users", normalizedEmail); 
-      const userDocSnap = await getDoc(userDocRef);
-
-      if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-        const firstName = userData.firstName || "Anonymous";
-        setUserName(firstName); // Store the user's name in state
-
-        const scoresDocRef = doc(db, "scores", today); 
-        await setDoc(scoresDocRef, {
-          [normalizedEmail]: {
-            firstName: firstName,
-            score: "--" 
-          }
-        }, { merge: true });
-
-        setOpen(false);
-      } else {
-        setErrorMessage("No user found with this email. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error checking email:", error);
-      setErrorMessage("An error occurred while checking the email. Please try again.");
-    }
-  };
 
   const handleSignUp = () => {
     setShowSignUpForm(true); 
@@ -95,11 +85,10 @@ function App() {
         await setDoc(scoresDocRef, {
           [normalizedEmail]: {
             firstName: firstName,
-            score: "--" // Initial score set to "--"
+            score: 0 // Initial score set to 0
           }
         }, { merge: true });
 
-        // Clear the input fields and close the modal
         setFirstName("");
         setEmail("");
         setOpen(false);
@@ -125,11 +114,10 @@ function App() {
         show={showStats}
         background="border-4 border-sky-300 dark:border-slate-700 bg-sky-100 
         dark:bg-slate-900 drop-shadow-xl 
-      absolute z-10 w-full sm:w-fit inset-x-0 mx-auto py-6 px-6 rounded-md 
-      space-y-2"
+        absolute z-10 w-full sm:w-fit inset-x-0 mx-auto py-6 px-6 rounded-md 
+        space-y-2"
       >
-        {/* Pass userName as prop to Statistics */}
-        <Statistics setShowStats={setShowStats} userName={userName} />
+        <Statistics setShowStats={setShowStats} userName={userName} email={email} />
       </Fade>
 
       <Routes>
@@ -155,72 +143,71 @@ function App() {
 
       {/* Modal for sign-in and sign-up */}
       <Modal open={open} onClose={handleClose}>
-  <Box
-    sx={{
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      width: 400,
-      bgcolor: 'background.paper',
-      boxShadow: 24,
-      p: 4,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-    }}
-  >
-    {!showSignUpForm ? (
-      <>
-        <h2 id="popup-modal">Sign In</h2>
-        <TextField
-          label="Email"
-          variant="outlined"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          fullWidth
-          style={{ marginBottom: '10px' }}
-        />
-        {errorMessage && (
-          <p style={{ color: "red" }}>{errorMessage}</p>
-        )}
-        <Button variant="contained" color="primary" onClick={handleSignIn}>
-          Sign In
-        </Button>
-        <Button variant="contained" color="secondary" onClick={handleSignUp} style={{ marginTop: '10px' }}>
-          Sign Up
-        </Button>
-      </>
-    ) : (
-      <>
-        <h2 id="popup-modal">Sign Up</h2>
-        <TextField
-          label="First Name"
-          variant="outlined"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          fullWidth
-          style={{ marginBottom: '10px' }}
-        />
-        <TextField
-          label="Email"
-          variant="outlined"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          fullWidth
-          style={{ marginBottom: '10px' }}
-        />
-        {errorMessage && (
-          <p style={{ color: "red" }}>{errorMessage}</p>
-        )}
-        <Button variant="contained" color="primary" onClick={handleSubmit}>
-          Sign Up
-        </Button>
-      </>
-    )}
-  </Box>
-</Modal>
-
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 400,
+            bgcolor: 'background.paper',
+            boxShadow: 24,
+            p: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          {!showSignUpForm ? (
+            <>
+              <h2 id="popup-modal">Sign In</h2>
+              <TextField
+                label="Email"
+                variant="outlined"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                fullWidth
+                style={{ marginBottom: '10px' }}
+              />
+              {errorMessage && (
+                <p style={{ color: "red" }}>{errorMessage}</p>
+              )}
+              <Button variant="contained" color="primary" onClick={handleSignIn}>
+                Sign In
+              </Button>
+              <Button variant="contained" color="secondary" onClick={handleSignUp} style={{ marginTop: '10px' }}>
+                Sign Up
+              </Button>
+            </>
+          ) : (
+            <>
+              <h2 id="popup-modal">Sign Up</h2>
+              <TextField
+                label="First Name"
+                variant="outlined"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                fullWidth
+                style={{ marginBottom: '10px' }}
+              />
+              <TextField
+                label="Email"
+                variant="outlined"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                fullWidth
+                style={{ marginBottom: '10px' }}
+              />
+              {errorMessage && (
+                <p style={{ color: "red" }}>{errorMessage}</p>
+              )}
+              <Button variant="contained" color="primary" onClick={handleSubmit}>
+                Sign Up
+              </Button>
+            </>
+          )}
+        </Box>
+      </Modal>
     </div>
   );
 }
