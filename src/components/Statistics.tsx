@@ -12,13 +12,21 @@ import { doc, getDoc, setDoc } from "firebase/firestore"; // Import Firestore fu
 
 type Props = {
   setShowStats: React.Dispatch<React.SetStateAction<boolean>>;
-  userName?: string; // Allow userName to be passed in
-  email?: string; // Pass user email for score updates
+  userName?: string; // Allow userName to be optional
+  email?: string; // Add email as an optional prop
 };
+
 
 export default function Statistics({ setShowStats, userName, email }: Props) {
   const localeContext = useContext(LocaleContext);
   const { locale } = localeContext;
+
+  useEffect(() => {
+    if (email) {
+      // Update stats or make API calls using email
+      console.log(`User email is: ${email}`);
+    }
+  }, [email]);
 
   const firstStats = {
     gamesWon: 0,
