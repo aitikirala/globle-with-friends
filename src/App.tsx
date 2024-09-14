@@ -85,7 +85,8 @@ const handleSignIn = async () => {
         await setDoc(scoresDocRef, {
           [normalizedEmail]: {
             firstName: firstName,
-            score: 0 // Initial score set to 0
+            score: 0, // Initial score set to 0
+            gamesWon: 0
           }
         }, { merge: true });
 

@@ -9,6 +9,7 @@ import { LocaleContext } from "../i18n/LocaleContext";
 import localeList from "../i18n/messages";
 import { db } from "./Firebase"; // Import Firestore from Firebase
 import { doc, getDoc, setDoc } from "firebase/firestore"; // Import Firestore functions
+import { useCallback } from 'react';
 
 type Props = {
   setShowStats: React.Dispatch<React.SetStateAction<boolean>>;
@@ -72,36 +73,31 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
     };
   }, [setShowStats]);
 
-  
-  const updateScore = async (email: string, todaysGuesses: number) => {
-    if (!email || todaysGuesses === 0) {
-      console.log("No valid email or guesses to update.");
-      return; // Ensure email and guesses are valid
-    }
-  
-    try {
-      console.log("Updating score for:", email, "with guesses:", todaysGuesses); // Log the email and guesses
-  
-      // Create a reference to the Firestore document
-      const scoresDocRef = doc(db, "scores", today);
-  
-      // Set or update the score for the user
-      await setDoc(
-        scoresDocRef,
-        {
-          [email]: {
-            firstName: userName || "Unknown", // Include user's first name
-            score: todaysGuesses, // Store score as a number
-          },
-        },
-        { merge: true } // Merge with existing data
-      );
-  
-      console.log(`Score updated for ${email}: ${todaysGuesses}`);
-    } catch (error) {
-      console.error("Error updating score in Firestore:", error); // Log any errors
-    }
-  };
+
+const updateScore = useCallback(async (email: string, todaysGuesses: number) => {
+  if (!email || todaysGuesses === 0) {
+    console.log("No valid email or guesses to update.");
+    return; // Ensure email and guesses are valid
+  }
+
+  try {
+    console.log("Updating score for:", email, "with guesses:", todaysGuesses);
+
+    const scoresDocRef = doc(db, "scores", today);
+
+    await setDoc(scoresDocRef, {
+      [email]: {
+        firstName: userName || "Unknown", 
+        score: todaysGuesses,
+      },
+    }, { merge: true });
+
+    console.log(`Score updated for ${email}: ${todaysGuesses}`);
+  } catch (error) {
+    console.error("Error updating score in Firestore:", error);
+  }
+}, [userName]); // Depend on `userName` as it's used inside the function
+
   
   useEffect(() => {
     // Check if the user has guessed the mystery country correctly today
