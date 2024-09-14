@@ -120,6 +120,46 @@ const updateScore = useCallback(async (email: string, todaysGuesses: number) => 
   }, [lastWin, email, todaysGuesses, userName]);
   
 
+  const updateGamesWon = async (userEmail: string) => {
+    const userDocRef = doc(db, "users", userEmail);
+    const userDocSnap = await getDoc(userDocRef);
+  
+    if (userDocSnap.exists()) {
+      const userData = userDocSnap.data();
+      let gamesWon = userData.gamesWon || 0; // Get current gamesWon or default to 0
+  
+      // Get today's score from the scores collection
+      const todayScoresRef = doc(db, "scores", today);
+      const todayScoresSnap = await getDoc(todayScoresRef);
+      
+      if (todayScoresSnap.exists()) {
+        const scoreData = todayScoresSnap.data();
+        const userScore = scoreData[userEmail]?.score || 0;
+  
+        if (userScore > 0) {
+          gamesWon += 1; // Increment gamesWon if score > 0
+        }
+  
+        // Update the user's gamesWon in Firestore
+        await setDoc(userDocRef, { gamesWon }, { merge: true });
+      }
+    }
+  };
+
+  useEffect(() => {
+    // Check if the user has guessed the mystery country correctly today
+    if (lastWin === today && email && todaysGuesses !== "--" && Number(todaysGuesses) !== 0) {
+      console.log("User guessed the country correctly. Updating Firestore with todaysGuesses:", todaysGuesses);
+      updateScore(email, Number(todaysGuesses)); // Call updateScore to update Firestore
+  
+      // Call the function to update gamesWon after updating the score
+      updateGamesWon(email);
+    } else {
+      console.log("Conditions not met for updating the score. Either no win or invalid guesses.");
+    }
+  }, [lastWin, email, todaysGuesses, userName]);
+  
+
   // Leaderboard Modal State
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState<{ name: string, score: string }[]>([]);
