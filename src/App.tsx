@@ -27,42 +27,46 @@ function App() {
   const [email, setEmail] = useState(""); 
   const [errorMessage, setErrorMessage] = useState(""); 
   const [userName, setUserName] = useState(""); 
+  const [signUpSuccessMessage, setSignUpSuccessMessage] = useState(""); // Message to show after sign up
   const themeContext = useContext(ThemeContext);
 
   useEffect(() => {
     if (reSpin) setTimeout(() => setReSpin(false), 1);
   }, [reSpin]);
 
-  const handleClose = () => setOpen(false);
+  // Prevent closing the modal by clicking outside
+  const handleClose = () => {
+    // Do nothing, so they can't close the modal
+  };
+
   const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-const handleSignIn = async () => {
-  if (!email) {
-    setErrorMessage("Please enter an email.");
-    return;
-  }
-
-  try {
-    const normalizedEmail = normalizeEmail(email); // Ensure lowercase
-
-    const userDocRef = doc(db, "users", normalizedEmail); 
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (userDocSnap.exists()) {
-      const userData = userDocSnap.data();
-      const firstName = userData.firstName || "Anonymous";
-      setUserName(firstName); 
-
-      setOpen(false);
-    } else {
-      setErrorMessage("No user found with this email. Please try again.");
+  const handleSignIn = async () => {
+    if (!email) {
+      setErrorMessage("Please enter an email.");
+      return;
     }
-  } catch (error) {
-    console.error("Error checking email:", error);
-    setErrorMessage("An error occurred while checking the email. Please try again.");
-  }
-};
 
+    try {
+      const normalizedEmail = normalizeEmail(email); // Ensure lowercase
+
+      const userDocRef = doc(db, "users", normalizedEmail); 
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const firstName = userData.firstName || "Anonymous";
+        setUserName(firstName); 
+
+        setOpen(false);
+      } else {
+        setErrorMessage("No user found with this email. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error checking email:", error);
+      setErrorMessage("An error occurred while checking the email. Please try again.");
+    }
+  };
 
   const handleSignUp = () => {
     setShowSignUpForm(true); 
@@ -77,7 +81,8 @@ const handleSignIn = async () => {
         // Add the user to the 'users' collection
         await setDoc(doc(db, "users", normalizedEmail), {
           firstName: firstName,
-          email: normalizedEmail 
+          email: normalizedEmail,
+          gamesWon: 0 // Initial gamesWon
         });
 
         // Add the user to the 'scores' collection with a default score
@@ -86,13 +91,14 @@ const handleSignIn = async () => {
           [normalizedEmail]: {
             firstName: firstName,
             score: 0, // Initial score set to 0
-            gamesWon: 0
           }
         }, { merge: true });
 
+        // Clear form and switch back to sign-in modal with a message
         setFirstName("");
         setEmail("");
-        setOpen(false);
+        setShowSignUpForm(false); // Go back to the sign-in screen
+        setSignUpSuccessMessage("Sign up successful! Now sign in."); // Display message to the user
 
       } catch (error) {
         console.error("Error adding document: ", error);
@@ -162,6 +168,7 @@ const handleSignIn = async () => {
           {!showSignUpForm ? (
             <>
               <h2 id="popup-modal">Sign In</h2>
+              {signUpSuccessMessage && <p style={{ color: "green" }}>{signUpSuccessMessage}</p>}
               <TextField
                 label="Email"
                 variant="outlined"
