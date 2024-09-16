@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+prev:   import { useContext, useEffect, useRef, useState } from "react";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { Stats } from "../lib/localStorage";
 import { isMobile } from "react-device-detect";
@@ -74,47 +74,36 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
   }, [setShowStats]);
 
 
-  const updateScore = useCallback(async (email: string, todaysGuesses: number) => {
-    if (!email || todaysGuesses === 0) {
-      console.log("No valid email or guesses to update.");
-      return; // Ensure email and guesses are valid
-    }
-  
-    try {
-      console.log("Checking if score already exists for:", email.trim().toLowerCase());
-  
-      const scoresDocRef = doc(db, "scores", today);
-      const docSnapshot = await getDoc(scoresDocRef);
-  
-      if (docSnapshot.exists() && docSnapshot.data()[email.trim().toLowerCase()]) {
-        console.log(`Score already exists for ${email}. Skipping update.`);
-        // Show popup message informing the user that the score won't be updated
-        alert("You can play as many times as you want, but your score won't update in the leaderboard! You have already played for the day :)");
-        return; // Exit without updating
-      }
-  
-      console.log("Updating score for:", email.trim().toLowerCase(), "with guesses:", todaysGuesses);
-  
-      await setDoc(scoresDocRef, {
-        [email.trim().toLowerCase()]: {
-          firstName: userName || "Unknown", 
-          score: todaysGuesses,
-        },
-      }, { merge: true });
-  
-      console.log(`Score updated for ${email.trim().toLowerCase()}: ${todaysGuesses}`);
-    } catch (error) {
-      console.error("Error updating score in Firestore:", error);
-    }
-  }, [userName]);
-  
-  
+const updateScore = useCallback(async (email: string, todaysGuesses: number) => {
+  if (!email || todaysGuesses === 0) {
+    console.log("No valid email or guesses to update.");
+    return; // Ensure email and guesses are valid
+  }
+
+  try {
+    console.log("Updating score for:", email, "with guesses:", todaysGuesses);
+
+    const scoresDocRef = doc(db, "scores", today);
+
+    await setDoc(scoresDocRef, {
+      [email]: {
+        firstName: userName || "Unknown", 
+        score: todaysGuesses,
+      },
+    }, { merge: true });
+
+    console.log(`Score updated for ${email}: ${todaysGuesses}`);
+  } catch (error) {
+    console.error("Error updating score in Firestore:", error);
+  }
+}, [userName]); // Depend on `userName` as it's used inside the function
+
   
   useEffect(() => {
     // Check if the user has guessed the mystery country correctly today
     if (lastWin === today && email && todaysGuesses !== "--" && Number(todaysGuesses) !== 0) {
       console.log("User guessed the country correctly. Updating Firestore with todaysGuesses:", todaysGuesses);
-      updateScore(email.trim().toLowerCase(), Number(todaysGuesses)); // Call updateScore to update Firestore
+      updateScore(email, Number(todaysGuesses)); // Call updateScore to update Firestore
     } else {
       console.log("Conditions not met for updating the score. Either no win or invalid guesses.");
     }
