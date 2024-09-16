@@ -8,7 +8,7 @@ import { FormattedMessage } from "react-intl";
 import { LocaleContext } from "../i18n/LocaleContext";
 import localeList from "../i18n/messages";
 import { db } from "./Firebase"; // Import Firestore from Firebase
-import { doc, getDoc, setDoc } from "firebase/firestore"; // Import Firestore functions
+import { doc, getDoc, getDocs, collection, setDoc } from "firebase/firestore"; // Import Firestore functions
 import { useCallback } from 'react';
 
 type Props = {
@@ -16,7 +16,6 @@ type Props = {
   userName?: string; // Allow userName to be optional
   email?: string; // Add email as an optional prop
 };
-
 
 export default function Statistics({ setShowStats, userName, email }: Props) {
   const localeContext = useContext(LocaleContext);
@@ -74,30 +73,59 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
   }, [setShowStats]);
 
 
-const updateScore = useCallback(async (email: string, todaysGuesses: number) => {
-  if (!email || todaysGuesses === 0) {
-    console.log("No valid email or guesses to update.");
-    return; // Ensure email and guesses are valid
-  }
-
-  try {
-    console.log("Updating score for:", email, "with guesses:", todaysGuesses);
-
-    const scoresDocRef = doc(db, "scores", today);
-
-    await setDoc(scoresDocRef, {
-      [email]: {
-        firstName: userName || "Unknown", 
-        score: todaysGuesses,
-      },
-    }, { merge: true });
-
-    console.log(`Score updated for ${email}: ${todaysGuesses}`);
-  } catch (error) {
-    console.error("Error updating score in Firestore:", error);
-  }
-}, [userName]); // Depend on `userName` as it's used inside the function
-
+  const updateScore = useCallback(async (email: string, todaysGuesses: number) => {
+    if (!email || todaysGuesses === 0) {
+      console.log("No valid email or guesses to update.");
+      return; // Ensure email and guesses are valid
+    }
+  
+    try {
+      console.log("Updating score for:", email, "with guesses:", todaysGuesses);
+  
+      const userDocRef = doc(db, "users", email); // Reference to the user document
+      const userDocSnapshot = await getDoc(userDocRef);
+  
+      if (userDocSnapshot.exists()) {
+        const userData = userDocSnapshot.data();
+        const currentTotalScore = userData?.totalScore || 0;
+        const currentNumScores = userData?.numScores || 0;
+  
+        const updatedTotalScore = currentTotalScore + todaysGuesses; // Increment total score
+        const updatedNumScores = currentNumScores + 1; // Increment number of scores
+  
+        // Update the user's document with the new totalScore and numScores
+        await setDoc(userDocRef, {
+          totalScore: updatedTotalScore,
+          numScores: updatedNumScores,
+        }, { merge: true });
+  
+        console.log(`User's totalScore and numScores updated for ${email}`);
+      } else {
+        // If the document does not exist, create it with the initial values
+        await setDoc(userDocRef, {
+          firstName: userName || "Unknown",
+          totalScore: todaysGuesses,
+          numScores: 1, // First score
+        });
+  
+        console.log(`User document created with initial score for ${email}`);
+      }
+  
+      // Update today's score in the "scores" collection (this part is kept the same as before)
+      const scoresDocRef = doc(db, "scores", today);
+      await setDoc(scoresDocRef, {
+        [email]: {
+          firstName: userName || "Unknown", 
+          score: todaysGuesses,
+        },
+      }, { merge: true });
+  
+      console.log(`Score updated for ${email}: ${todaysGuesses}`);
+    } catch (error) {
+      console.error("Error updating score in Firestore:", error);
+    }
+  }, [userName]);
+  
   
   useEffect(() => {
     // Check if the user has guessed the mystery country correctly today
@@ -112,29 +140,42 @@ const updateScore = useCallback(async (email: string, todaysGuesses: number) => 
   // Leaderboard Modal State
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState<{ name: string, score: string }[]>([]);
+  const [filter, setFilter] = useState<"today" | "all-time">("today"); // Add filter state
 
   const fetchLeaderboard = async () => {
     const leaderboard: { name: string, score: string }[] = [];
     try {
-      const scoresDocRef = doc(db, "scores", today); // Fetch today's document from Firestore
-      const docSnapshot = await getDoc(scoresDocRef); // Use getDoc to fetch a single document
-
-      if (docSnapshot.exists()) {
-        const data = docSnapshot.data();
-        for (const [email, scoreData] of Object.entries(data)) {
-          console.log("Fetched score for", email, ":", scoreData); // Log the fetched data
-          leaderboard.push({ name: (scoreData as any).firstName, score: (scoreData as any).score });
+      if (filter === "today") {
+        const scoresDocRef = doc(db, "scores", today); // Fetch today's document from Firestore
+        const docSnapshot = await getDoc(scoresDocRef); // Use getDoc to fetch a single document
+  
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data();
+          for (const [email, scoreData] of Object.entries(data)) {
+            leaderboard.push({ name: (scoreData as any).firstName, score: (scoreData as any).score });
+          }
+        } else {
+          console.log("No data found for today's scores.");
         }
       } else {
-        console.log("No data found for today's scores.");
+        // Fetch all documents for all-time leaderboard
+        const usersCollectionRef = collection(db, "users"); // Assume users collection for storing user data
+        const querySnapshot = await getDocs(usersCollectionRef);
+  
+        querySnapshot.forEach((doc) => {
+          const { firstName, totalScore, numScores } = doc.data();
+          const avgScore = totalScore / numScores; // Calculate the average score
+          leaderboard.push({ name: firstName, score: avgScore.toFixed(2) });
+        });
       }
-
+  
       setLeaderboardData(leaderboard);
       setShowLeaderboard(true); // Show leaderboard modal
     } catch (error) {
       console.error("Error fetching leaderboard:", error);
     }
   };
+  
 
   return (
     <div ref={modalRef} className="max-w-sm">
@@ -162,8 +203,17 @@ const updateScore = useCallback(async (email: string, todaysGuesses: number) => 
         </tbody>
       </table>
 
-      {/* Add the Leaderboard button */}
+      {/* Add the filter and Leaderboard button */}
       <div className="flex justify-around mt-6">
+        <select
+          className="bg-gray-200 dark:bg-gray-800 text-black dark:text-white rounded px-4 py-2"
+          value={filter} // Dropdown for selecting filter
+          onChange={(e) => setFilter(e.target.value as "today" | "all-time")}
+        >
+          <option value="today">Today</option>
+          <option value="all-time">All Time</option>
+        </select>
+
         <button onClick={fetchLeaderboard} className="bg-blue-500 text-white rounded-md px-4 py-2">
           Leaderboard
         </button>
@@ -173,7 +223,7 @@ const updateScore = useCallback(async (email: string, todaysGuesses: number) => 
       {showLeaderboard && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-md mx-auto">
-            <h2 className="text-xl font-bold mb-4">Leaderboard</h2>
+            <h2 className="text-xl font-bold mb-4">Leaderboard ({filter === "today" ? "Today" : "All Time"})</h2>
             <ul>
               {leaderboardData.map((entry, index) => (
                 <li key={index} className="my-2">
