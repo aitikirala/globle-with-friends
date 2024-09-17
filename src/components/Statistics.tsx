@@ -80,7 +80,10 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
     }
   
     try {
-      console.log("Updating score for:", email, "with guesses:", todaysGuesses);
+      // Normalize the email to lowercase to avoid case mismatch issues
+      const normalizedEmail = email.trim().toLowerCase();
+  
+      console.log("Updating score for:", normalizedEmail, "with guesses:", todaysGuesses);
   
       // Reference to today's score in the 'scores' collection
       const scoresDocRef = doc(db, "scores", today);
@@ -89,16 +92,16 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
       // Check if there's already a score for the user today
       if (scoresDocSnap.exists()) {
         const scoresData = scoresDocSnap.data();
-        const userScoreData = scoresData[email];
+        const userScoreData = scoresData[normalizedEmail];
   
         if (userScoreData && userScoreData.score > 0) {
-          console.log("User already has a non-zero score for today. Score cannot be updated.");
+          console.log("User already has a non-zero score for today. They cannot play again.");
           return; // Do not update if today's score is already greater than 0
         }
       }
   
       // Reference to the user's document in the 'users' collection
-      const userDocRef = doc(db, "users", email);
+      const userDocRef = doc(db, "users", normalizedEmail);
       const userDocSnap = await getDoc(userDocRef);
   
       let numScores = 1;
@@ -110,8 +113,8 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
         totalScore = (userData.totalScore || 0);
   
         // Check if they already played today (to avoid counting multiple times)
-        if (scoresDocSnap.exists() && scoresDocSnap.data()[email]) {
-          const existingScore = scoresDocSnap.data()[email].score;
+        if (scoresDocSnap.exists() && scoresDocSnap.data()[normalizedEmail]) {
+          const existingScore = scoresDocSnap.data()[normalizedEmail].score;
           if (existingScore === 0) {
             // If the score is 0, allow the update
             numScores += 1;
@@ -140,17 +143,19 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
   
       // Update the user's score in the 'scores' collection for today
       await setDoc(scoresDocRef, {
-        [email]: {
+        [normalizedEmail]: {
           firstName: userName || "Unknown",
           score: todaysGuesses,
         }
       }, { merge: true });
   
-      console.log(`Score updated for ${email}: ${todaysGuesses}, numScores: ${numScores}, totalScore: ${totalScore}`);
+      console.log(`Score updated for ${normalizedEmail}: ${todaysGuesses}, numScores: ${numScores}, totalScore: ${totalScore}`);
     } catch (error) {
       console.error("Error updating score in Firestore:", error);
     }
   }, [userName]);
+  
+  
   
   
   
