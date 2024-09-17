@@ -80,47 +80,76 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
     }
   
     try {
-      console.log("Updating score for:", email, "with guesses:", todaysGuesses);
+      // Normalize the email to lowercase to avoid case mismatch issues
+      const normalizedEmail = email.trim().toLowerCase();
   
-      const userDocRef = doc(db, "users", email); // Reference to the user document
-      const userDocSnapshot = await getDoc(userDocRef);
+      console.log("Updating score for:", normalizedEmail, "with guesses:", todaysGuesses);
   
-      if (userDocSnapshot.exists()) {
-        const userData = userDocSnapshot.data();
-        const currentTotalScore = userData?.totalScore || 0;
-        const currentNumScores = userData?.numScores || 0;
+      // Reference to today's score in the 'scores' collection
+      const scoresDocRef = doc(db, "scores", today);
+      const scoresDocSnap = await getDoc(scoresDocRef);
   
-        const updatedTotalScore = currentTotalScore + todaysGuesses; // Increment total score
-        const updatedNumScores = currentNumScores + 1; // Increment number of scores
+      // Check if there's already a score for the user today
+      if (scoresDocSnap.exists()) {
+        const scoresData = scoresDocSnap.data();
+        const userScoreData = scoresData[normalizedEmail];
   
-        // Update the user's document with the new totalScore and numScores
-        await setDoc(userDocRef, {
-          totalScore: updatedTotalScore,
-          numScores: updatedNumScores,
-        }, { merge: true });
-  
-        console.log(`User's totalScore and numScores updated for ${email}`);
-      } else {
-        // If the document does not exist, create it with the initial values
-        await setDoc(userDocRef, {
-          firstName: userName || "Unknown",
-          totalScore: todaysGuesses,
-          numScores: 1, // First score
-        });
-  
-        console.log(`User document created with initial score for ${email}`);
+        if (userScoreData && userScoreData.score > 0) {
+          console.log("User already has a non-zero score for today. They cannot play again.");
+          return; // Do not update if today's score is already greater than 0
+        }
       }
   
-      // Update today's score in the "scores" collection (this part is kept the same as before)
-      const scoresDocRef = doc(db, "scores", today);
+      // Reference to the user's document in the 'users' collection
+      const userDocRef = doc(db, "users", normalizedEmail);
+      const userDocSnap = await getDoc(userDocRef);
+  
+      let numScores = 1;
+      let totalScore = todaysGuesses;
+  
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        numScores = (userData.numScores || 0);
+        totalScore = (userData.totalScore || 0);
+  
+        // Check if they already played today (to avoid counting multiple times)
+        if (scoresDocSnap.exists() && scoresDocSnap.data()[normalizedEmail]) {
+          const existingScore = scoresDocSnap.data()[normalizedEmail].score;
+          if (existingScore === 0) {
+            // If the score is 0, allow the update
+            numScores += 1;
+            totalScore += todaysGuesses;
+          } else {
+            console.log("Score is already greater than 0 and cannot be updated.");
+            return; // Do not update if today's score is already greater than 0
+          }
+        } else {
+          // If they haven't played today, increment numScores and totalScore
+          numScores += 1;
+          totalScore += todaysGuesses;
+        }
+      } else {
+        // This is a new user, set the default values for numScores and totalScore
+        numScores = 1;
+        totalScore = todaysGuesses;
+      }
+  
+      // Update the user's score data in the 'users' collection
+      await setDoc(userDocRef, {
+        firstName: userName || "Unknown",
+        numScores: numScores,
+        totalScore: totalScore,
+      }, { merge: true }); // Merge to prevent overwriting other fields
+  
+      // Update the user's score in the 'scores' collection for today
       await setDoc(scoresDocRef, {
-        [email]: {
-          firstName: userName || "Unknown", 
+        [normalizedEmail]: {
+          firstName: userName || "Unknown",
           score: todaysGuesses,
-        },
+        }
       }, { merge: true });
   
-      console.log(`Score updated for ${email}: ${todaysGuesses}`);
+      console.log(`Score updated for ${normalizedEmail}: ${todaysGuesses}, numScores: ${numScores}, totalScore: ${totalScore}`);
     } catch (error) {
       console.error("Error updating score in Firestore:", error);
     }
@@ -144,6 +173,9 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
 
   const fetchLeaderboard = async () => {
     const leaderboard: { name: string, score: string }[] = [];
+    let totalScoresToday = 0; // Variable to sum today's scores
+    let numScoresToday = 0; // Variable to count how many players have a score today
+  
     try {
       if (filter === "today") {
         const scoresDocRef = doc(db, "scores", today); // Fetch today's document from Firestore
@@ -152,7 +184,12 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
         if (docSnapshot.exists()) {
           const data = docSnapshot.data();
           for (const [email, scoreData] of Object.entries(data)) {
-            leaderboard.push({ name: (scoreData as any).firstName, score: (scoreData as any).score });
+            const score = (scoreData as any).score;
+            leaderboard.push({ name: (scoreData as any).firstName, score });
+  
+            // Accumulate today's scores
+            totalScoresToday += Number(score);
+            numScoresToday += 1;
           }
         } else {
           console.log("No data found for today's scores.");
@@ -174,7 +211,16 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
     } catch (error) {
       console.error("Error fetching leaderboard:", error);
     }
+  
+    // Calculate and display today's average score
+    if (numScoresToday > 0) {
+      const avgScoreToday = (totalScoresToday / numScoresToday).toFixed(2); // Calculate average
+      console.log("Today's Average Score:", avgScoreToday);
+      // Optionally add it to the leaderboardData to display
+      leaderboard.push({ name: "Today's Average # of Guesses", score: avgScoreToday });
+    }
   };
+  
   
 
   return (
@@ -205,7 +251,26 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
 
       {/* Add the filter and Leaderboard button */}
       <div className="flex justify-around mt-6">
-        <select
+
+        <button onClick={fetchLeaderboard} className="bg-blue-500 text-white rounded-md px-4 py-2">
+          Leaderboard
+        </button>
+      </div>
+
+      {/* Leaderboard Modal */}
+{showLeaderboard && (
+  <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md mx-auto">
+      <h2 className="text-xl font-bold mb-4">Leaderboard ({filter === "today" ? "Today" : "All Time"})</h2>
+      <ul>
+        {leaderboardData.map((entry, index) => (
+          <li key={index} className="my-2">
+            {entry.name}: {entry.score}
+          </li>
+        ))}
+      </ul>
+
+      <select
           className="bg-gray-200 dark:bg-gray-800 text-black dark:text-white rounded px-4 py-2"
           value={filter} // Dropdown for selecting filter
           onChange={(e) => setFilter(e.target.value as "today" | "all-time")}
@@ -214,32 +279,16 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
           <option value="all-time">All Time</option>
         </select>
 
-        <button onClick={fetchLeaderboard} className="bg-blue-500 text-white rounded-md px-4 py-2">
-          Leaderboard
-        </button>
-      </div>
-
-      {/* Leaderboard Modal */}
-      {showLeaderboard && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md mx-auto">
-            <h2 className="text-xl font-bold mb-4">Leaderboard ({filter === "today" ? "Today" : "All Time"})</h2>
-            <ul>
-              {leaderboardData.map((entry, index) => (
-                <li key={index} className="my-2">
-                  {entry.name}: {entry.score}
-                </li>
-              ))}
-            </ul>
-            <button
-              className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
-              onClick={() => setShowLeaderboard(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+        
+      <button
+        className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
+        onClick={() => setShowLeaderboard(false)}
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
     </div>
   );
 }
