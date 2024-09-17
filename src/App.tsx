@@ -10,10 +10,10 @@ import { ThemeContext } from "./context/ThemeContext";
 import Fade from "./transitions/Fade";
 import { MobileOnlyView, TabletView, BrowserView } from "react-device-detect";
 import SnackAdUnit from "./components/SnackAdUnit";
-import { Modal, Box, Button, TextField } from '@mui/material'; 
-import { db } from './components/Firebase';
+import { Modal, Box, Button, TextField } from "@mui/material";
+import { db } from "./components/Firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { today } from './util/dates';
+import { today } from "./util/dates";
 
 function App() {
   const [reSpin, setReSpin] = useState(false);
@@ -21,12 +21,12 @@ function App() {
   const [params] = useSearchParams();
   const practiceMode = Boolean(params.get("practice_mode"));
 
-  const [open, setOpen] = useState(true); 
-  const [showSignUpForm, setShowSignUpForm] = useState(false); 
-  const [firstName, setFirstName] = useState(""); 
-  const [email, setEmail] = useState(""); 
-  const [errorMessage, setErrorMessage] = useState(""); 
-  const [userName, setUserName] = useState(""); 
+  const [open, setOpen] = useState(true);
+  const [showSignUpForm, setShowSignUpForm] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [email, setEmail] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [userName, setUserName] = useState("");
   const [signUpSuccessMessage, setSignUpSuccessMessage] = useState(""); // Message to show after sign up
   const themeContext = useContext(ThemeContext);
 
@@ -50,13 +50,13 @@ function App() {
     try {
       const normalizedEmail = normalizeEmail(email); // Ensure lowercase
 
-      const userDocRef = doc(db, "users", normalizedEmail); 
+      const userDocRef = doc(db, "users", normalizedEmail);
       const userDocSnap = await getDoc(userDocRef);
 
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
         const firstName = userData.firstName || "Anonymous";
-        setUserName(firstName); 
+        setUserName(firstName);
 
         setOpen(false);
       } else {
@@ -64,13 +64,15 @@ function App() {
       }
     } catch (error) {
       console.error("Error checking email:", error);
-      setErrorMessage("An error occurred while checking the email. Please try again.");
+      setErrorMessage(
+        "An error occurred while checking the email. Please try again."
+      );
     }
   };
 
   const handleSignUp = () => {
-    setShowSignUpForm(true); 
-    setErrorMessage(""); 
+    setShowSignUpForm(true);
+    setErrorMessage("");
   };
 
   const handleSubmit = async () => {
@@ -82,24 +84,27 @@ function App() {
         await setDoc(doc(db, "users", normalizedEmail), {
           firstName: firstName,
           email: normalizedEmail,
-          gamesWon: 0 // Initial gamesWon
+          gamesWon: 0, // Initial gamesWon
         });
 
         // Add the user to the 'scores' collection with a default score
-        const scoresDocRef = doc(db, "scores", today); 
-        await setDoc(scoresDocRef, {
-          [normalizedEmail]: {
-            firstName: firstName,
-            score: 0, // Initial score set to 0
-          }
-        }, { merge: true });
+        const scoresDocRef = doc(db, "scores", today);
+        await setDoc(
+          scoresDocRef,
+          {
+            [normalizedEmail]: {
+              firstName: firstName,
+              score: 0, // Initial score set to 0
+            },
+          },
+          { merge: true }
+        );
 
         // Clear form and switch back to sign-in modal with a message
         setFirstName("");
         setEmail("");
         setShowSignUpForm(false); // Go back to the sign-in screen
         setSignUpSuccessMessage("Sign up successful! Now sign in."); // Display message to the user
-
       } catch (error) {
         console.error("Error adding document: ", error);
       }
@@ -124,12 +129,19 @@ function App() {
         absolute z-10 w-full sm:w-fit inset-x-0 mx-auto py-6 px-6 rounded-md 
         space-y-2"
       >
-        <Statistics setShowStats={setShowStats} userName={userName} email={email} />
+        <Statistics
+          setShowStats={setShowStats}
+          userName={userName}
+          email={email}
+        />
       </Fade>
 
       <Routes>
         <Route path="/" element={<Help />} />
-        <Route path="/game" element={<Game reSpin={reSpin} setShowStats={setShowStats} />} />
+        <Route
+          path="/game"
+          element={<Game reSpin={reSpin} setShowStats={setShowStats} />}
+        />
         <Route path="/settings" element={<Settings />} />
         <Route path="/info" element={<Info />} />
       </Routes>
@@ -152,38 +164,47 @@ function App() {
       <Modal open={open} onClose={handleClose}>
         <Box
           sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
             width: 400,
-            bgcolor: 'background.paper',
+            bgcolor: "background.paper",
             boxShadow: 24,
             p: 4,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
           {!showSignUpForm ? (
             <>
               <h2 id="popup-modal">Sign In</h2>
-              {signUpSuccessMessage && <p style={{ color: "green" }}>{signUpSuccessMessage}</p>}
+              {signUpSuccessMessage && (
+                <p style={{ color: "green" }}>{signUpSuccessMessage}</p>
+              )}
               <TextField
                 label="Email"
                 variant="outlined"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 fullWidth
-                style={{ marginBottom: '10px' }}
+                style={{ marginBottom: "10px" }}
               />
-              {errorMessage && (
-                <p style={{ color: "red" }}>{errorMessage}</p>
-              )}
-              <Button variant="contained" color="primary" onClick={handleSignIn}>
+              {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSignIn}
+              >
                 Sign In
               </Button>
-              <Button variant="contained" color="secondary" onClick={handleSignUp} style={{ marginTop: '10px' }}>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleSignUp}
+                style={{ marginTop: "10px" }}
+              >
                 Sign Up
               </Button>
             </>
@@ -196,7 +217,7 @@ function App() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 fullWidth
-                style={{ marginBottom: '10px' }}
+                style={{ marginBottom: "10px" }}
               />
               <TextField
                 label="Email"
@@ -204,12 +225,14 @@ function App() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 fullWidth
-                style={{ marginBottom: '10px' }}
+                style={{ marginBottom: "10px" }}
               />
-              {errorMessage && (
-                <p style={{ color: "red" }}>{errorMessage}</p>
-              )}
-              <Button variant="contained" color="primary" onClick={handleSubmit}>
+              {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSubmit}
+              >
                 Sign Up
               </Button>
             </>
