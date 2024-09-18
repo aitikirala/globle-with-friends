@@ -227,6 +227,9 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
             totalScoresToday += Number(score);
             numScoresToday += 1;
           }
+
+          // Sort today's leaderboard by score (ascending)
+          leaderboard.sort((a, b) => Number(a.score) - Number(b.score));
         } else {
           console.log("No data found for today's scores.");
         }
@@ -240,6 +243,9 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
           const avgScore = totalScore / numScores; // Calculate the average score
           leaderboard.push({ name: firstName, score: avgScore.toFixed(2) });
         });
+
+        // Sort all-time leaderboard by average score (ascending)
+        leaderboard.sort((a, b) => Number(a.score) - Number(b.score));
       }
 
       setLeaderboardData(leaderboard);
