@@ -240,8 +240,15 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
 
         querySnapshot.forEach((doc) => {
           const { firstName, totalScore, numScores } = doc.data();
-          const avgScore = totalScore / numScores; // Calculate the average score
-          leaderboard.push({ name: firstName, score: avgScore.toFixed(2) });
+          const avgScore = totalScore / numScores;
+
+          // Apply the formula: Adjusted Score = avgScore - log2(numScores)
+          const adjustedScore = avgScore - Math.log2(numScores);
+
+          leaderboard.push({
+            name: firstName,
+            score: adjustedScore.toFixed(2),
+          });
         });
 
         // Sort all-time leaderboard by average score (ascending)
@@ -252,17 +259,6 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
       setShowLeaderboard(true); // Show leaderboard modal
     } catch (error) {
       console.error("Error fetching leaderboard:", error);
-    }
-
-    // Calculate and display today's average score
-    if (numScoresToday > 0) {
-      const avgScoreToday = (totalScoresToday / numScoresToday).toFixed(2); // Calculate average
-      console.log("Today's Average Score:", avgScoreToday);
-      // Optionally add it to the leaderboardData to display
-      leaderboard.push({
-        name: "Today's Average # of Guesses",
-        score: avgScoreToday,
-      });
     }
   };
 
@@ -338,7 +334,12 @@ export default function Statistics({ setShowStats, userName, email }: Props) {
             </h2>
             <ul>
               {leaderboardData.map((entry, index) => (
-                <li key={index} className="my-2">
+                <li
+                  key={index}
+                  className={`my-2 ${
+                    index === 0 ? "font-bold text-green-600" : "" // Bold and green text for the first entry (lowest score)
+                  }`}
+                >
                   {entry.name}: {entry.score}
                 </li>
               ))}
