@@ -22,6 +22,10 @@ If you are really struggling to find the answer, I recommend going to Google Map
 - Country outlines in the Help screen provided by Vemaps.com
 - Favicons are from favicon.io
 
+## Features Coming Soon:
+- More comprehensive view of personal stats
+- Better UI
+
 # Running the project on your local machine
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app). If you want to run the project on your local machine,
 1. Clone this repo
